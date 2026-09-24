@@ -1,6 +1,11 @@
-[bits 16]
-[org 0x0000]
-
+[bits 32]
+global _start
 extern kmain
-call kmain
-jmp $
+
+_start:
+    call kmain
+
+.hang:
+    cli
+    hlt
+    jmp .hang

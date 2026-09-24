@@ -1,17 +1,15 @@
-OUTPUT_FORMAT("binary")
-ENTRY(start)
-
+ENTRY(_start)
 SECTIONS
 {
-    . = 0x0000;
+    . = 0x10000;
 
-    .text : {
+    .text : AT(0x10000) {
         kstart.o(.text)
         *(.text)
     }
 
     .rodata : {
-        *(.rodata*)
+        *(.rodata)
     }
 
     .data : {

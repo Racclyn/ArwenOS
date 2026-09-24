@@ -1,13 +1,9 @@
-[bits 16]
-global start
+[bits 32]
+global _start
 extern kmain
 
-start:
-    mov ax, cs
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov sp, 0xfffe
+_start:
+    mov esp, 0x90000
 
     call kmain
 
