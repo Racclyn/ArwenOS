@@ -5,6 +5,15 @@ use warnings;
 my $action = shift // '';
 
 if ($action eq 'build') {
+    my $kernel_base_address   = 0x10000;
+    my $kernel_target_sectors = 24;      # We need at least 24 sectors currently, can possibly reduce if we add compression. There's probably some way to calculate this, I can't bother rn.
+    my $kernel_target_size    = $kernel_target_sectors * 512;
+
+    my $fs_start_address      = $kernel_base_address + $kernel_target_size;
+
+    print sprintf("[+] Layout: Kernel Base = 0x%X, Target Sectors = %d, FS Start = 0x%X\n",
+        $kernel_base_address, $kernel_target_sectors, $fs_start_address);
+
     print "[+] Compiling filesystem packer...\n";
     system("gcc fs.c -o fs_compiler") == 0 or die "[-] Failed to compile fs.c\n";
 
@@ -14,8 +23,12 @@ if ($action eq 'build') {
     print "[+] Compiling kernel entry...\n";
     system("nasm -f elf32 kstart.o kstart.asm 2>/dev/null || nasm -f elf32 kstart.asm -o kstart.o") == 0 or die "[-] Failed to compile kernel entry\n";
 
-    print "[+] Compiling C kernel...\n";
-    system("gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-builtin -c kernel.c -o kernel.o") == 0 or die "[-] Failed to compile C kernel\n";
+    print "[+] Compiling C kernel with dynamic FS_START_ADDRESS (0x" . sprintf('%X', $fs_start_address) . ")...\n";
+    my $gcc_cmd = sprintf(
+        "gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-builtin -DFS_START_ADDRESS=0x%X -c kernel.c -o kernel.o",
+        $fs_start_address
+    );
+    system($gcc_cmd) == 0 or die "[-] Failed to compile C kernel\n";
 
     print "[+] Linking kernel as ELF...\n";
     system("ld -m elf_i386 -T linker.ld kstart.o kernel.o -o kernel.tmp") == 0 or die "[-] Failed to link kernel ELF\n";
@@ -29,11 +42,8 @@ if ($action eq 'build') {
     my $kernel_size = -s 'kernel.bin';
     my $fs_size = -s 'fs.bin';
 
-    # Allocate fixed 64 sectors (32768 bytes) for kernel so FS sits safely at 0x30000, in production this should be dynamically calculated.
-    my $kernel_target_sectors = 64;
-    my $kernel_target_size = $kernel_target_sectors * 512;
     if ($kernel_size > $kernel_target_size) {
-        die "[-] Error: Kernel is too large (> $kernel_target_sectors sectors).\n";
+        die "[-] Error: Kernel is too large ($kernel_size bytes) > allocated $kernel_target_sectors sectors ($kernel_target_size bytes).\n";
     }
 
     open my $fh, '+<', 'kernel.bin' or die "[-] Cannot open kernel.bin: $!\n";

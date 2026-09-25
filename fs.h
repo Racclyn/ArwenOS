@@ -15,7 +15,7 @@ struct FSHeader {
     unsigned int file_count;
 } __attribute__((packed));
 
-#define FS_START_ADDRESS 0x18000
+// #define FS_START_ADDRESS 0x0000, its set via build.pl now.
 
 static inline int fs_read_file(const char *filename, char *buffer, unsigned int max_len) {
     struct FSHeader *header = (struct FSHeader *)FS_START_ADDRESS;
